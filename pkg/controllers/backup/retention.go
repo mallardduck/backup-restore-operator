@@ -29,18 +29,18 @@ func (h *handler) deleteBackupsFollowingRetentionPolicy(backup *v1.Backup) error
 			return h.deleteBackupsFromMountPath(retentionCount, h.defaultBackupMountPath, backup.Name, backup.Spec.EncryptionConfigSecretName != "")
 		} else if h.defaultS3BackupLocation != nil {
 			// not checking for nil, since if this wasn't provided, the default local location would get used
-			s3Client, err := objectstore.GetS3Client(h.ctx, h.defaultS3BackupLocation, h.dynamicClient)
+			client, err := objectstore.NewClient(h.ctx, h.defaultS3BackupLocation, h.dynamicClient)
 			if err != nil {
 				return err
 			}
-			return h.deleteS3Backups(backup, h.defaultS3BackupLocation, s3Client, retentionCount, backup.Spec.EncryptionConfigSecretName != "")
+			return h.deleteS3Backups(backup, h.defaultS3BackupLocation, client, retentionCount, backup.Spec.EncryptionConfigSecretName != "")
 		}
 	} else if backup.Spec.StorageLocation.S3 != nil {
-		s3Client, err := objectstore.GetS3Client(h.ctx, backup.Spec.StorageLocation.S3, h.dynamicClient)
+		client, err := objectstore.NewClient(h.ctx, backup.Spec.StorageLocation.S3, h.dynamicClient)
 		if err != nil {
 			return err
 		}
-		return h.deleteS3Backups(backup, backup.Spec.StorageLocation.S3, s3Client, retentionCount, backup.Spec.EncryptionConfigSecretName != "")
+		return h.deleteS3Backups(backup, backup.Spec.StorageLocation.S3, client, retentionCount, backup.Spec.EncryptionConfigSecretName != "")
 	}
 	return nil
 }
@@ -85,7 +85,13 @@ func (h *handler) deleteBackupsFromMountPath(retentionCount int, backupLocation,
 	return nil
 }
 
-func (h *handler) deleteS3Backups(backup *v1.Backup, s3 *v1.S3ObjectStore, svc *minio.Client, retentionCount int, encrypted bool) error {
+func (h *handler) deleteS3Backups(backup *v1.Backup, s3 *v1.S3ObjectStore, svc objectstore.Client, retentionCount int, encrypted bool) error {
+	if svc.RetentionEnabled && svc.RetentionMode.IsValid() {
+		logrus.Debugf("File deletion will be skipped because bucket `%s` has lock enabled", s3.BucketName)
+		return nil
+	}
+
+	client := svc.GetS3Client()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -100,12 +106,12 @@ func (h *handler) deleteS3Backups(backup *v1.Backup, s3 *v1.S3ObjectStore, svc *
 		Prefix:    prefix,
 		Recursive: isRecursive,
 	}
-	if s3utils.IsGoogleEndpoint(*svc.EndpointURL()) {
+	if s3utils.IsGoogleEndpoint(*client.EndpointURL()) {
 		logrus.Info("Endpoint is Google GCS")
 		opts.UseV1 = true
 	}
 
-	objectCh := svc.ListObjects(ctx, s3.BucketName, opts)
+	objectCh := client.ListObjects(ctx, s3.BucketName, opts)
 	// default-backup-([a-z0-9-]).*([tar]).gz
 	// default-test-ecm-backup-24e1b8ce-1f00-4bbe-94bb-248ad7606dc8-([0-9-#]).*tar.gz$ OR
 	// default-test-ecm-backup-24e1b8ce-1f00-4bbe-94bb-248ad7606dc8-([0-9-#]).*tar.gz.enc$
@@ -146,7 +152,7 @@ func (h *handler) deleteS3Backups(backup *v1.Backup, s3 *v1.S3ObjectStore, svc *
 	})
 	for _, backupFile := range backupFiles[retentionCount:] {
 		logrus.Infof("Deleting s3 backup file [%s] to follow retention policy of max %v backups", backupFile.filename, retentionCount)
-		err := svc.RemoveObject(context.Background(), s3.BucketName, backupFile.filename, minio.RemoveObjectOptions{})
+		err := client.RemoveObject(context.Background(), s3.BucketName, backupFile.filename, minio.RemoveObjectOptions{})
 		if err != nil {
 			logrus.Errorf("Error detected during deletion: %v", err)
 			return err

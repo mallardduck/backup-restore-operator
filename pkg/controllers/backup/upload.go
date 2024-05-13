@@ -32,11 +32,11 @@ func (h *handler) uploadToS3(backup *v1.Backup, objectStore *v1.S3ObjectStore, t
 	if err := CreateTarAndGzip(tmpBackupPath, tmpBackupGzipFilepath, gzipFile, backup.Name); err != nil {
 		return removeTempUploadDir(tmpBackupGzipFilepath, err)
 	}
-	s3Client, err := objectstore.GetS3Client(h.ctx, objectStore, h.dynamicClient)
+	client, err := objectstore.NewClient(h.ctx, objectStore, h.dynamicClient)
 	if err != nil {
 		return removeTempUploadDir(tmpBackupGzipFilepath, err)
 	}
-	if err := objectstore.UploadBackupFile(s3Client, objectStore.BucketName, gzipFile, filepath.Join(tmpBackupGzipFilepath, gzipFile)); err != nil {
+	if err := client.UploadBackupFile(objectStore.BucketName, gzipFile, filepath.Join(tmpBackupGzipFilepath, gzipFile)); err != nil {
 		return removeTempUploadDir(tmpBackupGzipFilepath, err)
 	}
 	return os.RemoveAll(tmpBackupGzipFilepath)

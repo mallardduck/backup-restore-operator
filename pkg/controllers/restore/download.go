@@ -19,7 +19,7 @@ import (
 )
 
 func (h *handler) downloadFromS3(restore *v1.Restore, objStore *v1.S3ObjectStore) (string, error) {
-	s3Client, err := objectstore.GetS3Client(h.ctx, objStore, h.dynamicClient)
+	client, err := objectstore.NewClient(h.ctx, objStore, h.dynamicClient)
 	if err != nil {
 		return "", err
 	}
@@ -32,7 +32,7 @@ func (h *handler) downloadFromS3(restore *v1.Restore, objStore *v1.S3ObjectStore
 		// remove the trailing / from the folder name
 		prefix = fmt.Sprintf("%s/%s", strings.TrimSuffix(folder, "/"), prefix)
 	}
-	targetFileLocation, err := objectstore.DownloadFromS3WithPrefix(s3Client, prefix, objStore.BucketName)
+	targetFileLocation, err := client.DownloadFromS3WithPrefix(prefix, objStore.BucketName)
 	if err != nil {
 		return "", err
 	}

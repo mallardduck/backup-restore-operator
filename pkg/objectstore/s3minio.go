@@ -8,16 +8,14 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
+	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
-
-	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -25,6 +23,12 @@ import (
 	v1 "github.com/rancher/backup-restore-operator/pkg/apis/resources.cattle.io/v1"
 	log "github.com/sirupsen/logrus"
 )
+
+type Client struct {
+	client           *minio.Client
+	RetentionEnabled bool
+	RetentionMode    *minio.RetentionMode
+}
 
 // Almost everything in this file is from rke-tools with some modifications https://github.com/rancher/rke-tools/blob/master/main.go
 
@@ -34,7 +38,18 @@ const (
 	contentType     = "application/gzip"
 )
 
-func SetS3Service(bc *v1.S3ObjectStore, accessKey, secretKey string, useSSL bool) (*minio.Client, error) {
+func NewClient(ctx context.Context, objectStore *v1.S3ObjectStore, dynamicClient dynamic.Interface) (Client, error) {
+	newClient := Client{}
+	err := newClient.initS3Client(ctx, objectStore, dynamicClient)
+	return newClient, err
+}
+
+func (c *Client) GetS3Client() *minio.Client {
+	return c.client
+}
+
+func (c *Client) setS3Service(bc *v1.S3ObjectStore, accessKey, secretKey string, useSSL bool) (*minio.Client, error) {
+	ctx := context.Background()
 	// Initialize minio client object.
 	log.WithFields(log.Fields{
 		"s3-endpoint":              bc.Endpoint,
@@ -85,18 +100,39 @@ func SetS3Service(bc *v1.S3ObjectStore, accessKey, secretKey string, useSSL bool
 		break
 	}
 
-	found, err := client.BucketExists(context.Background(), bc.BucketName)
+	found, err := client.BucketExists(ctx, bc.BucketName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if s3 bucket [%s] exists, error: %v", bc.BucketName, err)
 	}
 	if !found {
 		return nil, fmt.Errorf("s3 bucket [%s] not found", bc.BucketName)
 	}
+
+	// Check if the bucket uses object locking.
+	err = c.isObjectLockEnabled(ctx, bc.BucketName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if s3 bucket [%s] uses locks, error: %v", bc.BucketName, err)
+	}
+
 	return client, nil
 }
 
+func (c *Client) isObjectLockEnabled(ctx context.Context, bucketName string) error {
+	mode, _, _, err := c.client.GetBucketObjectLockConfig(ctx, bucketName)
+	if err != nil {
+		return err
+	}
+	c.RetentionEnabled = mode != nil
+	c.RetentionMode = mode
+
+	// TODO: verify that we don't need to capture and use the lock policy times
+
+	return nil
+}
+
+// initS3Client sets up the S3 client used for uploading, downloading, and deleting
 // TODO: namespace should be backup.NS only if backup CR contains storage location, for using operator's s3, use chart's ns
-func GetS3Client(ctx context.Context, objectStore *v1.S3ObjectStore, dynamicClient dynamic.Interface) (*minio.Client, error) {
+func (c *Client) initS3Client(ctx context.Context, objectStore *v1.S3ObjectStore, dynamicClient dynamic.Interface) error {
 	var accessKey, secretKey string
 	var notFoundKeys []string
 	if objectStore.CredentialSecretName != "" {
@@ -105,11 +141,11 @@ func GetS3Client(ctx context.Context, objectStore *v1.S3ObjectStore, dynamicClie
 		secretNs, secretName := objectStore.CredentialSecretNamespace, objectStore.CredentialSecretName
 		s3secret, err := secrets.Namespace(secretNs).Get(ctx, secretName, k8sv1.GetOptions{})
 		if err != nil {
-			return &minio.Client{}, err
+			return err
 		}
 		s3SecretData, ok := s3secret.Object["data"].(map[string]interface{})
 		if !ok {
-			return &minio.Client{}, fmt.Errorf("malformed secret [%s] in namespace [%s], unable to read the data field", secretName, secretNs)
+			return fmt.Errorf("malformed secret [%s] in namespace [%s], unable to read the data field", secretName, secretNs)
 		}
 		accessKeyEncoded, foundAccessKey := s3SecretData["accessKey"].(string)
 		if !foundAccessKey {
@@ -120,27 +156,28 @@ func GetS3Client(ctx context.Context, objectStore *v1.S3ObjectStore, dynamicClie
 			notFoundKeys = append(notFoundKeys, "secretKey")
 		}
 		if len(notFoundKeys) > 0 {
-			return &minio.Client{}, fmt.Errorf("malformed secret [%s] in namespace [%s], the following keys were not found in the data field: [%s]", secretName, secretNs, strings.Join(notFoundKeys, ","))
+			return fmt.Errorf("malformed secret [%s] in namespace [%s], the following keys were not found in the data field: [%s]", secretName, secretNs, strings.Join(notFoundKeys, ","))
 		}
 		accessKeyBytes, err := base64.StdEncoding.DecodeString(accessKeyEncoded)
 		if err != nil {
-			return &minio.Client{}, fmt.Errorf("malformed secret [%s] in namespace [%s], accessKey could not be base64 decoded: %v", secretName, secretNs, err)
+			return fmt.Errorf("malformed secret [%s] in namespace [%s], accessKey could not be base64 decoded: %v", secretName, secretNs, err)
 		}
 		accessKey = string(accessKeyBytes)
 		log.Debugf("Found accessKey [%s] in secret [%s] in namespace [%s]", accessKey, secretName, secretNs)
 		secretKeyBytes, err := base64.StdEncoding.DecodeString(secretKeyEncoded)
 		if err != nil {
-			return &minio.Client{}, fmt.Errorf("malformed secret [%s] in namespace [%s], secretKey could not be base64 decoded: %v", secretName, secretNs, err)
+			return fmt.Errorf("malformed secret [%s] in namespace [%s], secretKey could not be base64 decoded: %v", secretName, secretNs, err)
 		}
 		secretKey = string(secretKeyBytes)
 		log.Tracef("Found secretKey [%s] in secret [%s] in namespace [%s]", secretKey, secretName, secretNs)
 	}
 	// if no s3 credentials are provided, use IAM profile, this means passing empty access and secret keys to the SetS3Service call
-	s3Client, err := SetS3Service(objectStore, accessKey, secretKey, true)
+	s3Client, err := c.setS3Service(objectStore, accessKey, secretKey, true)
 	if err != nil {
-		return &minio.Client{}, err
+		return err
 	}
-	return s3Client, nil
+	c.client = s3Client
+	return nil
 }
 
 func getBucketLookupType(endpoint string) minio.BucketLookupType {
@@ -153,11 +190,22 @@ func getBucketLookupType(endpoint string) minio.BucketLookupType {
 	return minio.BucketLookupAuto
 }
 
-func UploadBackupFile(svc *minio.Client, bucketName, fileName, filePath string) error {
+func (c *Client) UploadBackupFile(bucketName, fileName, filePath string) error {
 	// Upload the zip file with FPutObject
 	log.Infof("invoking uploading backup file [%s] to s3", fileName)
 	for retries := 0; retries <= s3ServerRetries; retries++ {
-		uploadInfo, err := svc.FPutObject(context.Background(), bucketName, fileName, filePath, minio.PutObjectOptions{ContentType: contentType})
+		var uploadInfo minio.UploadInfo
+		var err error
+		if c.RetentionEnabled {
+			uploadInfo, err = c.client.FPutObject(context.Background(), bucketName, fileName, filePath, minio.PutObjectOptions{
+				ContentType: contentType,
+				Mode:        c.RetentionMode,
+			})
+		} else {
+			uploadInfo, err = c.client.FPutObject(context.Background(), bucketName, fileName, filePath, minio.PutObjectOptions{
+				ContentType: contentType,
+			})
+		}
 		if err != nil {
 			log.Infof("failed to upload backup file [%s], error: %v, retried %d times", fileName, err, retries)
 			if retries >= s3ServerRetries {
@@ -172,7 +220,8 @@ func UploadBackupFile(svc *minio.Client, bucketName, fileName, filePath string) 
 	return nil
 }
 
-func DownloadFromS3WithPrefix(client *minio.Client, prefix, bucket string) (string, error) {
+func (c *Client) DownloadFromS3WithPrefix(prefix, bucket string) (string, error) {
+	s3Client := c.client
 	var filename string
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -182,11 +231,11 @@ func DownloadFromS3WithPrefix(client *minio.Client, prefix, bucket string) (stri
 		Prefix:    prefix,
 		Recursive: false,
 	}
-	if s3utils.IsGoogleEndpoint(*client.EndpointURL()) {
+	if s3utils.IsGoogleEndpoint(*s3Client.EndpointURL()) {
 		log.Info("Endpoint is Google GCS")
 		opts.UseV1 = true
 	}
-	objectCh = client.ListObjects(ctx, bucket, opts)
+	objectCh = s3Client.ListObjects(ctx, bucket, opts)
 
 	for object := range objectCh {
 		if object.Err != nil {
@@ -209,7 +258,7 @@ func DownloadFromS3WithPrefix(client *minio.Client, prefix, bucket string) (stri
 	var object *minio.Object
 	var err error
 	for retries := 0; retries <= s3ServerRetries; retries++ {
-		object, err = client.GetObject(context.Background(), bucket, filename, minio.GetObjectOptions{})
+		object, err = s3Client.GetObject(context.Background(), bucket, filename, minio.GetObjectOptions{})
 		if err != nil {
 			log.Infof("Failed to download backup file [%s] from bucket [%s]: %v, retried %d times", filename, bucket, err, retries)
 			if retries >= s3ServerRetries {
@@ -266,7 +315,7 @@ func readS3EndpointCA(endpointCA string) ([]byte, error) {
 	if err == nil {
 		log.Info("reading s3-endpoint-ca as a base64 string")
 	} else {
-		ca, err = ioutil.ReadFile(endpointCA)
+		ca, err = os.ReadFile(endpointCA)
 		log.Infof("reading s3-endpoint-ca from [%v]", endpointCA)
 	}
 	return ca, err
