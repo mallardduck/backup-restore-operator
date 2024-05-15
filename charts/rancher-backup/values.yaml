@@ -53,8 +53,8 @@ global:
     psp:
       enabled: false # PSP enablement should default to false
   kubectl:
-    repository: rancher/kubectl
-    tag: v1.27.13
+    repository: mallardduck/rancher-kuberlr
+    tag: v1.0.0-rc.0
 
 ## Node labels for pod assignment
 ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
