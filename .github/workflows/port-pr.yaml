@@ -52,7 +52,7 @@ jobs:
               echo "milestone_exists=false" >> $GITHUB_ENV
            fi
       - name: Get target branch
-        if: ${{ env.is_member == 'true' && env.milestone_exists == 'true' }}
+        if: ${{ (env.is_member == 'true' || env.is_owner == 'true') && env.milestone_exists == 'true' }}
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -69,14 +69,14 @@ jobs:
               echo "target_branch_exists=false" >> $GITHUB_ENV
           fi
       - name: Checkout
-        if: ${{ env.is_member == 'true' && env.milestone_exists == 'true' && env.target_branch_exists == 'true' }}
+        if: ${{ (env.is_member == 'true' || env.is_owner == 'true') && env.milestone_exists == 'true' && env.target_branch_exists == 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ env.target_branch }}
           fetch-depth: '0'
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Port PR
-        if: ${{ env.is_member == 'true' && env.milestone_exists == 'true' && env.target_branch_exists == 'true' }}
+        if: ${{ (env.is_member == 'true' || env.is_owner == 'true') && env.milestone_exists == 'true' && env.target_branch_exists == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ORIGINAL_ISSUE_NUMBER: ${{ github.event.issue.number }}
