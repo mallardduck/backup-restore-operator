@@ -18,7 +18,11 @@ jobs:
               org: context.repo.owner,
               username: context.actor
             });
-            return orgMember;
+            const {repo: result} = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            return {orgMember, repo};
 
       - name: Display repository info
         run: echo "${{ steps.repo-info.outputs.result }}"
