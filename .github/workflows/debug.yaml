@@ -1,0 +1,24 @@
+name: Check Repository Info
+
+on: [push, workflow_dispatch]
+
+jobs:
+  repo-info:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Get repository info
+        id: repo-info
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const repo = await github.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            return repo;
+
+      - name: Display repository info
+        run: echo "${{ steps.repo-info.outputs.result }}"

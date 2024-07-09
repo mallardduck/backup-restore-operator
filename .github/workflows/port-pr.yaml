@@ -13,6 +13,10 @@ jobs:
     if: ${{ github.event.issue.pull_request && (startsWith(github.event.comment.body, '/backport') || startsWith(github.event.comment.body, '/forwardport')) }}
     steps:
       - name: Check org membership
+        uses: actions/github-script@v7
+        with:
+          script: console.log(context)
+      - name: Check org membership
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
