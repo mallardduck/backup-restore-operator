@@ -13,22 +13,27 @@ jobs:
     if: ${{ github.event.issue.pull_request && (startsWith(github.event.comment.body, '/backport') || startsWith(github.event.comment.body, '/forwardport')) }}
     steps:
       - name: Check org membership
-        uses: actions/github-script@v7
+        id: check-membership
+        uses: actions/github-script@v7.0.1
         with:
-          script: console.log(context)
-      - name: Check org membership
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if gh api orgs/${GITHUB_REPOSITORY_OWNER}/members --paginate | jq -e --arg GITHUB_ACTOR "$GITHUB_ACTOR" '.[] | select(.login == $GITHUB_ACTOR)' > /dev/null; then
-              echo "${GITHUB_ACTOR} is a member"
-              echo "is_member=true" >> $GITHUB_ENV
-          else
-              echo "${GITHUB_ACTOR} is not a member" >> $GITHUB_STEP_SUMMARY
-              echo "is_member=false" >> $GITHUB_ENV
-          fi
+          script: |
+            let orgMember = false
+            try {
+              orgMember = await github.rest.orgs.checkMembershipForUser({
+                org: context.repo.owner,
+                username: context.actor
+              });
+            } catch (err) {}
+            let { data: repo } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            let isRepoOwner = repo.owner.type != "Organization" && repo.owner.login == context.actor
+            core.exportVariable('is_member', orgMember != false);
+            core.exportVariable('is_owner', isRepoOwner);
+            return {orgMember, isRepoOwner};
       - name: Check milestone
-        if: ${{ env.is_member == 'true' }}
+        if: ${{ env.is_member == 'true' || env.is_owner == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ORIGINAL_ISSUE_NUMBER: ${{ github.event.issue.number }}
