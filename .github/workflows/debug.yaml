@@ -23,7 +23,7 @@ jobs:
             } catch (err) {
               console.log(err)
             }
-            const {repo: result} = await github.rest.repos.get({
+            const {result: repo} = await github.rest.repos.get({
               owner: context.repo.owner,
               repo: context.repo.repo
             });
