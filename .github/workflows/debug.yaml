@@ -27,7 +27,8 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo
             });
-            return {orgMember, repo};
+            let isRepoOwner = repo.owner.type != "Organization" && repo.owner.login == context.actor
+            return {orgMember, isRepoOwner};
 
       - name: Display repository info
         run: echo "${{ steps.repo-info.outputs.result }}"
