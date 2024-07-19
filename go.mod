@@ -11,7 +11,7 @@ replace (
 
 require (
 	github.com/minio/minio-go/v7 v7.0.70
-	github.com/rancher/lasso v0.0.0-20240529131504-37f557b0748b
+	github.com/rancher/lasso v0.0.0-20240710130346-32d96874d344
 	github.com/rancher/wrangler/v3 v3.0.0-rc2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3
