@@ -25,7 +25,7 @@
       ]
     },
     {
-      "groupName": "GitHub Actions",
+      "groupName": "GitHub Workflow Actions",
       "groupSlug": "gha-deps",
       "matchManagers": [
         "github-actions"
@@ -33,6 +33,7 @@
     },
     {
       "groupName": "Docker File Deps",
+      "groupSlug": "docker-bumps",
       "matchManagers": [
         "dockerfile"
       ]
