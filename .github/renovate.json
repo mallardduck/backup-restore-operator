@@ -1,9 +1,4 @@
 {
-  "extends": [
-    "github>rancher/renovate-config#release",
-    "group:kubernetes",
-    "group:all"
-  ],
   "baseBranches": [
     "gha-testtesttest"
   ],
