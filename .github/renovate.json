@@ -13,5 +13,16 @@
     "github.com/rancher/wrangler/v2",
     "github.com/rancher/wrangler/v3"
   ],
-  "prHourlyLimit": 15
+  "prHourlyLimit": 15,
+  "packageRules": [
+    {
+      "groupName": "GitHub Actions",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ]
+    }
+  ]
 }
