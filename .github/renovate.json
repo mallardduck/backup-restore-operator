@@ -1,6 +1,7 @@
 {
   "extends": [
-    "github>rancher/renovate-config#release"
+    "github>rancher/renovate-config#release",
+    "group:allDigest"
   ],
   "baseBranches": [
     "gha-testtesttest"
@@ -36,23 +37,6 @@
       "groupSlug": "docker-bumps",
       "matchManagers": [
         "dockerfile"
-      ]
-    },
-    {
-      "groupName": "Rancher Go Packages",
-      "groupSlug": "rancher-go-deps",
-      "matchManagers": [
-        "gomod"
-      ],
-      "matchPackagePrefixes": [
-        "github.com/rancher"
-      ]
-    },
-    {
-      "groupName": "Non-Rancher Go Packages",
-      "groupSlug": "other-go-deps",
-      "matchManagers": [
-        "gomod"
       ]
     }
   ]
