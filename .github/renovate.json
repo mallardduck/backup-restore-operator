@@ -1,7 +1,7 @@
 {
   "extends": [
     "github>rancher/renovate-config#release",
-    "group:all"
+    "group:kubernetes"
   ],
   "baseBranches": [
     "release/v3.0",
