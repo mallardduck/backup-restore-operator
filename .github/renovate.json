@@ -18,9 +18,6 @@
     {
       "groupName": "Go Toolchain",
       "groupSlug": "golang-tools",
-      "matchManagers": [
-        "gomod"
-      ],
       "matchDepTypes": [
         "toolchian"
       ]
