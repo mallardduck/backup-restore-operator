@@ -1,7 +1,7 @@
 {
   "extends": [
     "github>rancher/renovate-config#release",
-    "group:allDigest"
+    "group:allNonMajor"
   ],
   "baseBranches": [
     "gha-testtesttest"
