@@ -17,6 +17,7 @@
   "packageRules": [
     {
       "groupName": "GitHub Actions",
+      "groupSlug": "gha-deps",
       "matchManagers": [
         "github-actions"
       ],
