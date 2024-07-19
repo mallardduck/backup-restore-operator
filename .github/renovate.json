@@ -1,4 +1,7 @@
 {
+  "extends": [
+    "github>rancher/renovate-config#release"
+  ],
   "baseBranches": [
     "gha-testtesttest"
   ],
@@ -12,10 +15,26 @@
   "prHourlyLimit": 0,
   "packageRules": [
     {
+      "groupName": "Go Toolchain",
+      "groupSlug": "golang-tools",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchDepTypes": [
+        "toolchian"
+      ]
+    },
+    {
       "groupName": "GitHub Actions",
       "groupSlug": "gha-deps",
       "matchManagers": [
         "github-actions"
+      ]
+    },
+    {
+      "groupName": "Docker File Deps",
+      "matchManagers": [
+        "dockerfile"
       ]
     },
     {
@@ -26,6 +45,13 @@
       ],
       "matchPackagePrefixes": [
         "github.com/rancher"
+      ]
+    },
+    {
+      "groupName": "Non-Rancher Go Packages",
+      "groupSlug": "other-go-deps",
+      "matchManagers": [
+        "gomod"
       ]
     }
   ]
