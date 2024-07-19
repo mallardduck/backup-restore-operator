@@ -23,6 +23,16 @@
       "matchUpdateTypes": [
         "major"
       ]
+    },
+    {
+      "groupName": "rancher packages",
+      "groupSlug": "rancher-go",
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackagePrefixes": [
+        "github.com/rancher"
+      ]
     }
   ]
 }
