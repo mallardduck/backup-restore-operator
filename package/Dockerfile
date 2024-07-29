@@ -5,6 +5,6 @@ RUN go mod download
 COPY . .
 RUN ./scripts/build
 
-FROM registry.suse.com/bci/bci-micro:latest
+FROM scratch
 COPY --from=builder /usr/src/app/bin/backup-restore-operator  /usr/bin/
 ENTRYPOINT ["backup-restore-operator"]
