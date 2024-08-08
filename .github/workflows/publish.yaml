@@ -42,7 +42,7 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
+          GORELEASER_CURRENT_TAG: ${{ github.ref == 'refs/heads/main' && 'head' || github.ref_name }}
   push:
     needs : [
       ci
