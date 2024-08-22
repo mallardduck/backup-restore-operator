@@ -135,7 +135,7 @@ jobs:
           ubuntu-latest
           # org-rancher-arm64-containers,
         ]
-        K3S_VERSION : ${{ fromJSON(needs.build.outputs.k3sversions) }}
+        K3S_VERSION : ${{ fromJSON(needs.fork-build.outputs.k3sversions) }}
     steps:
       - name : Checkout repository
         uses : actions/checkout@v4
