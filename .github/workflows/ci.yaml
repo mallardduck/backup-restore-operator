@@ -27,6 +27,7 @@ on:
     - 'LICENSE'
 jobs:
   build:
+    if: ${{ github.repository_owner == 'rancher' }}
     strategy:
       matrix:
         arch:
@@ -53,6 +54,7 @@ jobs:
           path: ./dist/artifacts
         
   test:
+    if: ${{ github.repository_owner == 'rancher' }}
     name : integration-test
     needs : [
       build
