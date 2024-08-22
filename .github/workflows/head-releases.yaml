@@ -68,7 +68,7 @@ jobs:
       branch_static_tag: ${{ steps.set-vars.outputs.branch_static_tag }}
       prev_tag: ${{ steps.set-vars.outputs.prev_tag }}
   ci:
-    uses: /.github/workflows/ci.yaml
+    uses: ./.github/workflows/ci.yaml
     permissions:
       contents: read
   goreleaser:
