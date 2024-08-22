@@ -34,8 +34,8 @@ jobs:
 
             async function getPreviousTag(tagPrefix) {
               const { data: tags } = await github.rest.repos.listTags({
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
                 per_page: 100
               });
               
