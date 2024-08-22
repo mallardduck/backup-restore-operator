@@ -60,9 +60,9 @@ jobs:
               throw new Error('Unsupported branch pattern. Expected "main" or "release/v[0-9]+.0".');
             }
             
-            core.setOutput(branch_tag, branchTag);
-            core.setOutput(branch_static_tag, branchStaticTag);
-            core.setOutput(prev_tag, prevTag);
+            core.setOutput("branch_tag", branchTag);
+            core.setOutput("branch_static_tag", branchStaticTag);
+            core.setOutput("prev_tag", prevTag);
     outputs:
       branch_tag: ${{ steps.set-vars.outputs.branch_tag }}
       branch_static_tag: ${{ steps.set-vars.outputs.branch_static_tag }}
