@@ -33,7 +33,7 @@ jobs:
         arch:
           - x64
           - arm64
-    name : CI
+    name : build CI
     runs-on : runs-on,image=ubuntu22-full-${{ matrix.arch }},runner=4cpu-linux-${{ matrix.arch }},run-id=${{ github.run_id }}
     outputs:
       k3sversions: ${{ steps.support.outputs.k3sversions }}
@@ -53,7 +53,7 @@ jobs:
           name: bro-build-artifacts-${{ matrix.arch }}
           path: ./dist/artifacts
   fork-build:
-    name: build - FORK ONLY
+    name: build CI - FORK ONLY
     if: ${{ github.repository_owner != 'rancher' }}
     strategy:
       matrix:
@@ -61,7 +61,6 @@ jobs:
           ubuntu-latest
           # org-rancher-arm64-containers
         ]
-    name : CI
     runs-on : ${{ matrix.os }}
     outputs:
       k3sversions: ${{ steps.support.outputs.k3sversions }}
