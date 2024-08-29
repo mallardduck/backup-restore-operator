@@ -7,6 +7,10 @@ on:
       - gha-testtesttest
       - release/v[0-9]+.0
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: docker.io
   REPO : rancher
@@ -19,93 +23,26 @@ jobs:
     name: Prebuild needed Env vars
     runs-on: ubuntu-latest
     steps:
+      - name: Check out the repository to the runner
+        uses: actions/checkout@v4
       - name: Set Branch Tag and Other Variables
         id: set-vars
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const ref = process.env.GITHUB_REF;
-            const commitSha = process.env.GITHUB_SHA.substring(0, 7);
-            
-            let branchTag;
-            let branchStaticTag;
-            let prev_tag = null;
-
-
-            async function getPreviousTag(tagPrefix) {
-              const { data: tags } = await github.rest.repos.listTags({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                per_page: 100
-              });
-              
-              // Filter and sort tags by version or commit
-              const filteredTags = tags
-                .filter(tag => tag.name.startsWith(tagPrefix))
-                .sort((a, b) => new Date(b.commit.committer.date) - new Date(a.commit.committer.date));
-              
-              return filteredTags.length > 0 ? filteredTags[0].name : null;
-            }
-
-            if (ref == 'refs/heads/main' || ref == 'refs/heads/gha-testtesttest') {
-              branchTag = 'head';
-              branchStaticTag = `head-${commitSha}`;
-              prevTag = await getPreviousTag('head-');
-            } else if (ref.startsWith('refs/heads/release/')) {
-              const version = ref.split('/')[2]; // Extract "vX.0"
-              branchTag = `${version}-head`;
-              branchStaticTag = `${version}-head-${commitSha}`;
-              prevTag = await getPreviousTag(`${version}-head-`);
-            } else {
-              throw new Error('Unsupported branch pattern. Expected "main" or "release/v[0-9]+.0".');
-            }
-            
-            core.setOutput("branch_tag", branchTag);
-            core.setOutput("branch_static_tag", branchStaticTag);
-            core.setOutput("prev_tag", prevTag);
+        run: bash ./.github/scripts/branch-tags.sh >> $GITHUB_OUTPUT
     outputs:
       branch_tag: ${{ steps.set-vars.outputs.branch_tag }}
       branch_static_tag: ${{ steps.set-vars.outputs.branch_static_tag }}
       prev_tag: ${{ steps.set-vars.outputs.prev_tag }}
-  ci:
-    uses: ./.github/workflows/ci.yaml
-    permissions:
-      contents: read
-  goreleaser:
-    needs: [
-      prebuild-env,
-      ci
-    ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - run: git fetch --force --tags
-      - uses: actions/setup-go@v5
-        with:
-          go-version: 1.22
-      - name : Package release helm charts
-        run : make package-helm
-      - run : mkdir -p ./build/artifacts/ && mv -v ./dist/artifacts/ ./build/
-      - uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_CURRENT_TAG: ${{ needs.prebuild-env.outputs.branch_static_tag }}
   push:
     needs : [
       prebuild-env,
-      ci
     ]
     permissions:
       contents : read
       id-token: write
     name : Build and push BRO images
     runs-on : ubuntu-latest
+    env:
+      FULL_IMAGE_URL: ${{ env.REGISTRY }}/${{ vars.REPO || env.REPO || github.repository_owner }}/backup-restore-operator
     steps:
       - name : "Read vault secrets"
         uses : rancher-eio/read-vault-secrets@main
@@ -130,5 +67,12 @@ jobs:
           context: .
           file: ./package/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ vars.REPO || env.REPO }}/backup-restore-operator:${{ needs.prebuild-env.outputs.branch_static_tag }}
+          tags: ${{ env.FULL_IMAGE_URL }}:${{ needs.prebuild-env.outputs.branch_static_tag }}
           platforms: linux/amd64,linux/arm64
+      - name: Update rolling tag to new static tag
+        run: |
+          VERSION="1.2.0"
+          curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
+          mkdir -p oras-install/
+          tar -zxf oras_${VERSION}_*.tar.gz -C oras-install/
+          oras-install/oras copy ${{ env.FULL_IMAGE_URL }}:${{ needs.prebuild-env.outputs.branch_static_tag }} ${{ env.FULL_IMAGE_URL }}:${{ needs.prebuild-env.outputs.branch_tag }}
