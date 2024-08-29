@@ -62,13 +62,14 @@ jobs:
       - name: Build and push BRO image
         env:
           FULL_IMAGE_URL: "${{ env.REGISTRY }}/${{ vars.REPO || env.REPO || github.repository_owner }}/backup-restore-operator"
-          TAG: ${{ needs.prebuild-env.outputs.branch_static_tag }}
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./package/Dockerfile
+          build-args: |
+            TAG=${{ needs.prebuild-env.outputs.branch_static_tag }}
           push: true
-          tags: ${{ env.FULL_IMAGE_URL }}/backup-restore-operator:${{ needs.prebuild-env.outputs.branch_static_tag }}
+          tags: ${{ env.FULL_IMAGE_URL }}:${{ needs.prebuild-env.outputs.branch_static_tag }}
           platforms: linux/amd64,linux/arm64
       - name: Update rolling tag to new static tag
         env:
