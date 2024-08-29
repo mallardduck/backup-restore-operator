@@ -62,6 +62,7 @@ jobs:
       - name: Build and push BRO image
         env:
           FULL_IMAGE_URL: "${{ env.REGISTRY }}/${{ vars.REPO || env.REPO || github.repository_owner }}/backup-restore-operator"
+          TAG: ${{ needs.prebuild-env.outputs.branch_static_tag }}
         uses: docker/build-push-action@v6
         with:
           context: .
