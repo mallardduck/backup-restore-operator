@@ -41,8 +41,6 @@ jobs:
       id-token: write
     name : Build and push BRO images
     runs-on : ubuntu-latest
-    env:
-      FULL_IMAGE_URL: ${{ env.REGISTRY }}/${{ vars.REPO || env.REPO || github.repository_owner }}/backup-restore-operator
     steps:
       - name : "Read vault secrets"
         uses : rancher-eio/read-vault-secrets@main
@@ -62,14 +60,18 @@ jobs:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ env.DOCKER_PASSWORD }}
       - name: Build and push BRO image
+        env:
+          FULL_IMAGE_URL: "${{ env.REGISTRY }}/${{ vars.REPO || env.REPO || github.repository_owner }}/backup-restore-operator"
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./package/Dockerfile
           push: true
-          tags: ${{ env.FULL_IMAGE_URL }}:${{ needs.prebuild-env.outputs.branch_static_tag }}
+          tags: ${{ env.FULL_IMAGE_URL }}/backup-restore-operator:${{ needs.prebuild-env.outputs.branch_static_tag }}
           platforms: linux/amd64,linux/arm64
       - name: Update rolling tag to new static tag
+        env:
+          FULL_IMAGE_URL: ${{ env.REGISTRY }}/${{ vars.REPO || env.REPO || github.repository_owner }}/backup-restore-operator
         run: |
           VERSION="1.2.0"
           curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
