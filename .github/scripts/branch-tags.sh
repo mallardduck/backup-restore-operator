@@ -29,7 +29,7 @@ branchTag=""
 branchStaticTag=""
 prevTag=""
 
-if [ "$ref" == "refs/heads/main" ]; then
+if [[ "$ref" == "refs/heads/main" || "$ref" == "refs/heads/gha-testtesttest" ]]; then
   branchTag="head"
   branchStaticTag="main-${commitSha}"
   prevTag=$(getPreviousTag "main-")
