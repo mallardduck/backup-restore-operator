@@ -20,64 +20,22 @@ What the Backup Restore Operator is not:
 - Configured to back up user-created resources on the Rancher cluster.
 
 ### Branches and Releases
-This is the current branch strategy for `rancher/backup-restore-operator`, it may change in the future.
 
-| Branch          | Tag       | Rancher                |
-|-----------------|-----------|------------------------|
-| `main`          | `head`    | `main` branch (`head`) |
-| `release/v10.x` | `v10.x.x` | `v2.14.x`              |
-| `release/v9.x`  | `v9.x.x`  | `v2.13.x`              |
-| `release/v8.x`  | `v8.x.x`  | `v2.12.x`              |
-| `release/v7.x`  | `v7.x.x`  | `v2.11.x`              |
-| `release/v6.x`  | `v6.x.x`  | `v2.10.x`              |
+See [VERSION info](VERSION.md) document.
 
 ----
 
-## Quickstart
+## Installation
 
-You will need to install the `backup-restore-operator`, from the [Cluster Explorer UI](https://ranchermanager.docs.rancher.com/pages-for-subheaders/backup-restore-and-disaster-recovery).
-Within the App catalog look for the `Rancher Backups` application chart.
+The Backup and Restore Operator can be installed via the [Cluster Explorer UI](https://ranchermanager.docs.rancher.com/pages-for-subheaders/backup-restore-and-disaster-recovery) by deploying the `Rancher Backups` application chart from the App catalog.
 
-However, when performing a Rancher migration you will not have the UI installed.  
-So, you will need to install the charts via `helm repo` by executing the commands below.
-
-First, add the `rancher-charts` charts repository.
-
-```bash
-helm repo add rancher-charts https://charts.rancher.io
-helm repo update
-```
-
-Then, install both charts.
-Ensure that the CRD chart is installed first.
-
-```bash
-helm install --wait \
-    --create-namespace -n cattle-resources-system \
-    rancher-backup-crd rancher-charts/rancher-backup-crd
-helm install --wait \
-    -n cattle-resources-system \
-    rancher-backup rancher-charts/rancher-backup
-```
+For Helm-based installation (required when performing Rancher migrations without the UI), see the [chart README](./charts/rancher-backup/README.md).
 
 If you are using S3, you can configure the `s3.credentialSecretNamespace` to determine where the Backup and Restore Operator will look for the S3 backup secret. For more information on configuring backups, see the [backup documentation](https://ranchermanager.docs.rancher.com/how-to-guides/new-user-guides/backup-restore-and-disaster-recovery/back-up-rancher#2-perform-a-backup).
 
 ----
 
-### Uninstallation
-
-If you are uninstalling and want to keep backup(s), ensure that you have created Backup CR(s) and that your backups are stored in a safe location.
-Execute the following commands to uninstall:
-
-```bash
-helm uninstall -n cattle-resources-system rancher-backup
-helm uninstall -n cattle-resources-system rancher-backup-crd
-kubectl delete namespace cattle-resources-system
-```
-
-----
-
-## More Info
+## How It Works
 
 The default chart is built for the use case of backing up and restoring the Rancher application.
 However, under the hood the Backup Restore Operator is a rather flexible extension for backup and restore of Kubernetes resources.
@@ -105,42 +63,29 @@ It installs the following cluster-scoped CRDs:
 3. Restoring from a backup: To restore from a backup, user has to create an instance of the Restore CRD (create a Restore CR). A Restore CR must contain the exact Backup filename. Refer to the [examples](https://github.com/rancher/backup-restore-operator/tree/master/examples) folder for sample manifests.
 
 ---
+## Configuration
+
 ### Storage Location
 
 For help configuring the storage location, see [this documentation](https://ranchermanager.docs.rancher.com/reference-guides/backup-restore-configuration/storage-configuration).
 
----
-
 ### S3 Credentials
 
-If you are using S3 to store your backups, the `Backup` custom resource can reference an S3 credential secret in any namespace. The `credentialSecretNamespace` directive tells the backup application where to look for the secret:
-
-```
-s3:
-  bucketName: ''
-  credentialSecretName: ''
-  credentialSecretNamespace: ''
-  enabled: false
-  endpoint: ''
-  endpointCA: ''
-  folder: ''
-  insecureTLSSkipVerify: false
-  region: ''
-```
+If you are using S3 to store your backups, the `Backup` custom resource can reference an S3 credential secret in any namespace. The `credentialSecretNamespace` directive tells the backup application where to look for the secret. For configuration details, see the [chart configuration documentation](./charts/rancher-backup/README.md#configuration).
 
 ---
 
-### Developer Documentation
+## Developer Documentation
 
 Refer to [DEVELOPING.md](./DEVELOPING.md) for developer tips, tricks, and workflows when working with the `backup-restore-operator`.
 
-### Troubleshooting
+## Troubleshooting
 
 Refer to [troubleshooting.md](./docs/troubleshooting.md) for troubleshooting commands.
 
 ---
 
-### bro-tool
+## bro-tool
 
 `bro-tool` is an unofficial companion CLI for support engineers and developers. It lets you inspect BRO ResourceSet configuration and check resource coverage **without a live cluster**.
 
