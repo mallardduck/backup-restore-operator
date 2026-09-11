@@ -20,16 +20,8 @@ What the Backup Restore Operator is not:
 - Configured to back up user-created resources on the Rancher cluster.
 
 ### Branches and Releases
-This is the current branch strategy for `rancher/backup-restore-operator`, it may change in the future.
 
-| Branch          | Tag       | Rancher                |
-|-----------------|-----------|------------------------|
-| `main`          | `head`    | `main` branch (`head`) |
-| `release/v10.x` | `v10.x.x` | `v2.14.x`              |
-| `release/v9.x`  | `v9.x.x`  | `v2.13.x`              |
-| `release/v8.x`  | `v8.x.x`  | `v2.12.x`              |
-| `release/v7.x`  | `v7.x.x`  | `v2.11.x`              |
-| `release/v6.x`  | `v6.x.x`  | `v2.10.x`              |
+See [VERSION info](VERSION.md) document.
 
 ----
 
