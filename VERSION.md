@@ -13,4 +13,3 @@ The current version compatibility and alignment information is:
 | `release/v9.x`  | `v9.x.x`  | `v2.13.x`              |
 | `release/v8.x`  | `v8.x.x`  | `v2.12.x`              |
 | `release/v7.x`  | `v7.x.x`  | `v2.11.x`              |
-| `release/v6.x`  | `v6.x.x`  | `v2.10.x`              |
